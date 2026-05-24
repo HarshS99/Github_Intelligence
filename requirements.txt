@@ -1,0 +1,19 @@
+# Core
+flask
+flask-cors
+python-dotenv
+
+# MCP (requires Python 3.11+)
+mcp
+mcp-use
+
+# LangChain + Groq
+langchain
+langchain-groq
+langchain-core
+groq
+
+# GitHub scraping
+requests
+beautifulsoup4
+lxml
