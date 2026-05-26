@@ -1,199 +1,162 @@
 # 🐙 GitHub Intelligence Platform
 
-AI-powered GitHub analyzer using **MCP** (Model Context Protocol) + **mcp_use** + **Groq llama-3.3-70b**.
-
-## 🎯 Features
-
-- 🔍 **User Profile Analysis** - Get detailed GitHub user information
-- 📊 **Repository Analytics** - Analyze repos with language stats, commits, contributors
-- 🔥 **Trending Repos** - Scrape GitHub trending page (no API needed)
-- 🤖 **AI-Powered Insights** - Natural language queries powered by Groq LLM
-- 💬 **Conversational Memory** - Agent remembers context across queries
-- 🌐 **Web UI + CLI** - Use via browser or terminal
-
-## 🏗️ Architecture
-
-```
-index.html  →  api_server.py (Flask :8000)
-                    ↓
-              MCPAgent (mcp_use)  ← conversation memory
-                    ↓
-            MCP Client (stdio)
-                    ↓
-              server.py  ← 9 GitHub tools
-                    ↓
-            GitHub API + Web Scraping
-```
-
-**MCP server runs as a subprocess** — no separate terminal needed. `mcp_use` manages launching via `config.json`.
-
-## 📋 Prerequisites
-
-- **Python 3.11+** (required for `mcp-use`)
-- **Groq API Key** (free at [console.groq.com](https://console.groq.com))
-- **GitHub Token** (optional but recommended for higher rate limits)
-
-## 🚀 Setup
-
-### 1. Install Python 3.11+
-
-```bash
-# macOS
-brew install python@3.11
-
-# Linux
-sudo apt update && sudo apt install python3.11
-```
-
-### 2. Clone & Install
-
-```bash
-git clone https://github.com/HarshS99/GitHub-Profile-Analyzer.git
-cd GitHub-Profile-Analyzer
-
-# Create virtual environment
-python3.11 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 3. Configure Environment
-
-Create `.env` file:
-
-```bash
-cat > .env << 'EOF'
-GROQ_API_KEY=your-groq-api-key-here
-GITHUB_TOKEN=your-github-token-here
-EOF
-```
-
-**Get API Keys:**
-- Groq: https://console.groq.com/keys
-- GitHub: https://github.com/settings/tokens (need `public_repo` scope)
-
-### 4. Run
-
-**Option A — Web UI:**
-```bash
-python3.11 api_server.py
-# Open index.html in browser
-```
-
-**Option B — CLI:**
-```bash
-python3.11 cli.py
-```
-
-## 🛠️ Available MCP Tools
-
-| Tool | Description |
-|------|-------------|
-| `get_repository_info` | Stars, forks, issues, language, topics |
-| `get_repository_readme` | README content |
-| `get_repository_commits` | Recent commit history |
-| `search_repositories` | Search by keyword |
-| `get_trending_repos` | Scrape GitHub trending (web scraping) |
-| `analyze_code_stats` | Language breakdown percentages |
-| `get_contributors` | Top contributors |
-| `get_user_profile` | GitHub user profile |
-| `get_user_repos` | User's public repos |
-
-## 💬 Example Queries
-
-**Web UI or CLI:**
-```
-Analyze facebook/react
-Get the GitHub profile for user torvalds
-What are the trending Python repos today?
-Search for machine learning frameworks
-Show me the latest commits in vercel/next.js
-Who are the top contributors of django/django?
-```
-
-## 📁 Project Structure
-
-```
-├── server.py          # MCP server (stdio) with 9 GitHub tools
-├── api_server.py      # Flask API wrapping MCPAgent
-├── cli.py             # Terminal chat interface
-├── config.json        # MCP client configuration
-├── index.html         # Web UI
-├── requirements.txt   # Python dependencies
-├── .env              # API keys (create this)
-└── README.md         # This file
-```
-
-## 🔧 Configuration
-
-**config.json** - MCP server configuration:
-```json
-{
-    "mcpServers": {
-        "github-intelligence": {
-            "command": "python3.11",
-            "args": ["/absolute/path/to/server.py"]
-        }
-    }
-}
-```
-
-Update the path to your actual `server.py` location.
-
-## 🐛 Troubleshooting
-
-**401 Unauthorized errors:**
-- Check `.env` has valid `GITHUB_TOKEN`
-- Verify `config.json` has absolute path to `server.py`
-- Regenerate GitHub token at github.com/settings/tokens
-
-**ModuleNotFoundError:**
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-**Groq rate limit (413 error):**
-- Free tier: 12,000 tokens/minute
-- Solution: Reduce `max_tokens` in `api_server.py` or upgrade to Pro
-
-**Python version issues:**
-```bash
-python3.11 --version  # Must be 3.11 or higher
-```
-
-## 🎨 Web UI Features
-
-- **User Profile Lookup** - Enter GitHub username
-- **Repository Analysis** - Deep dive into any repo
-- **Search Repos** - Find repos by keyword
-- **Quick Tools** - One-click trending, ML repos, etc.
-- **Clear Memory** - Reset conversation context
-
-## 📝 Notes
-
-- MCP server launches automatically via `mcp_use`
-- Conversation memory persists within a session
-- GitHub token is optional but recommended for higher rate limits (5,000/hour vs 60/hour)
-- Web scraping used for trending repos (no API available)
-
-## 🤝 Contributing
-
-Pull requests welcome! For major changes, open an issue first.
-
-## 📄 License
-
-MIT
-
-## 🙏 Acknowledgments
-
-- [MCP](https://modelcontextprotocol.io) - Model Context Protocol
-- [mcp-use](https://github.com/wong2/mcp-use) - Python MCP client
-- [Groq](https://groq.com) - Fast LLM inference
-- [LangChain](https://langchain.com) - AI framework
+> AI-powered GitHub analysis — repos, users, issues, PRs, trending, and free-form chat.
+> Built with Groq llama-3.3-70b, official GitHub MCP Server, and Flask.
 
 ---
 
-Built with ❤️ using MCP + Groq
+## Requirements
+
+| Tool | Version | Check with |
+|---|---|---|
+| Python | 3.11 or newer | `python --version` |
+| Docker Desktop | Running | `docker ps` |
+| Groq API key | Free at groq.com | — |
+| GitHub token | Optional (recommended) | — |
+
+---
+
+## Quick start (4 steps)
+
+### 1 — Clone / copy project files
+
+Make sure these files are all in the same folder:
+
+```
+app.py
+cli.py
+github_client.py
+config.json
+index.html
+requirements.txt
+.env.example
+```
+
+### 2 — Create your `.env` file
+
+```bash
+cp .env.example .env
+```
+
+Then open `.env` and fill in your keys:
+
+```
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxx
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+- **GROQ_API_KEY** (required) — get it free at https://console.groq.com
+- **GITHUB_PERSONAL_ACCESS_TOKEN** (recommended) — without it GitHub limits
+  you to 60 API calls/hour. Create a token at https://github.com/settings/tokens
+  (no scopes needed for public repos).
+
+### 3 — Install Python packages
+
+```bash
+pip install -r requirements.txt
+```
+
+On first install this downloads ~500 MB of ML libraries. Grab a coffee. ☕
+
+### 4 — Pull the GitHub MCP Docker image (one-time, ~100 MB)
+
+```bash
+docker pull ghcr.io/github/github-mcp-server
+```
+
+---
+
+## Run
+
+```bash
+python app.py
+```
+
+You'll see:
+
+```
+═══════════════════════════════════════════════════════
+  🐙 GitHub Intelligence API — http://localhost:8000
+═══════════════════════════════════════════════════════
+  GROQ_API_KEY   : ✅ set
+  GITHUB_TOKEN   : ✅ set
+  config.json    : ✅ loaded
+═══════════════════════════════════════════════════════
+```
+
+Then open `index.html` in your browser (just double-click it or drag it into Chrome/Firefox).
+
+---
+
+## Using the CLI (optional)
+
+```bash
+python cli.py
+```
+
+Interactive terminal — same features as the web UI.
+
+---
+
+## API endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/status` | Health + config check |
+| POST | `/chat` | Free-form AI chat `{"message": "..."}` |
+| POST | `/analyze` | Full repo analysis `{"repository": "owner/repo"}` |
+| GET | `/user/<username>` | User profile + top repos |
+| POST | `/search` | Search repos `{"query": "..."}` |
+| GET | `/issues/<owner>/<repo>` | Open issues |
+| GET | `/pulls/<owner>/<repo>` | Open pull requests |
+| GET | `/trending?language=python&since=daily` | Trending repos |
+| POST | `/clear` | Clear session |
+
+---
+
+## Troubleshooting
+
+### `GROQ_API_KEY not set`
+Your `.env` file is missing or in the wrong folder.
+The `.env` must be in the same directory as `app.py`.
+
+### API shows "Offline" in the UI
+The Flask server isn't running. Run `python app.py` first.
+
+### First request takes 30–60 seconds
+Normal — Docker is starting the GitHub MCP container for the first time.
+Subsequent requests within the session are faster.
+
+### `ModuleNotFoundError: mcp_use`
+```bash
+pip install mcp-use
+```
+
+### GitHub rate limit errors (`403` or `429`)
+Add a `GITHUB_PERSONAL_ACCESS_TOKEN` to your `.env`.
+
+### Port 8000 already in use
+Change the port at the bottom of `app.py`:
+```python
+app.run(host="0.0.0.0", port=8001, ...)
+```
+And update the `const API = 'http://localhost:8001'` line in `index.html`.
+
+### `docker: command not found`
+Install Docker Desktop: https://docs.docker.com/get-docker/
+
+---
+
+## Project structure
+
+```
+.
+├── app.py            # Flask API server  ← start here
+├── cli.py            # Terminal interface
+├── github_client.py  # GitHub REST API client (used by app.py)
+├── config.json       # MCP Docker config
+├── index.html        # Web UI
+├── requirements.txt  # Python dependencies
+├── .env.example      # Key template (copy to .env)
+└── README.md
+```

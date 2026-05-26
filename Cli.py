@@ -1,72 +1,73 @@
 """
-GitHub Intelligence CLI
-Interactive chat using MCPAgent + mcp_use + ChatGroq (llama3-70b)
+cli.py — GitHub Intelligence CLI
+Run: python cli.py
 """
 
 import asyncio
+import json
 import os
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
-from mcp_use import MCPAgent, MCPClient
 
 load_dotenv()
 
-
 BANNER = """
 ╔══════════════════════════════════════════════════════╗
-║       🤖  GitHub Intelligence CLI  🐙               ║
-║   Powered by MCP + mcp_use + Groq llama3-70b        ║
+║   🐙  GitHub Intelligence CLI                       ║
+║   Groq llama-3.3-70b  ·  Official GitHub MCP        ║
 ╠══════════════════════════════════════════════════════╣
-║  Commands:                                           ║
-║    exit / quit  → end the session                   ║
-║    clear        → clear conversation memory         ║
-║    help         → show example prompts              ║
+║  exit / quit  →  end session                        ║
+║  clear        →  wipe conversation memory           ║
+║  help         →  example prompts                    ║
 ╚══════════════════════════════════════════════════════╝
 """
 
 HELP_TEXT = """
-Example prompts you can try:
-  • Analyze the repository facebook/react
-  • What are the trending Python repos today?
-  • Search for repositories about machine learning
+Example prompts:
+  • Analyze the repository microsoft/vscode
   • Get the profile of user torvalds
-  • What language does microsoft/vscode use?
-  • Show me the latest commits in vercel/next.js
-  • Who are the top contributors of django/django?
+  • List open issues in facebook/react
+  • Show open PRs in vercel/next.js
+  • Search for Rust web frameworks
+  • Latest commits in nodejs/node
+  • Find AI agent repos created in 2025
+  • Get README of django/django
 """
 
 
-async def run_cli():
-    load_dotenv()
+def _load_config() -> dict:
+    path = os.path.join(os.path.dirname(__file__), "config.json")
+    with open(path) as f:
+        cfg = json.load(f)
+    token = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN") or os.getenv("GITHUB_TOKEN", "")
+    cfg["mcpServers"]["github"]["env"]["GITHUB_PERSONAL_ACCESS_TOKEN"] = token
+    return cfg
 
+
+async def main():
     groq_key = os.getenv("GROQ_API_KEY")
     if not groq_key:
-        print("❌ GROQ_API_KEY not found in .env file")
+        print("❌  GROQ_API_KEY not found in .env")
         return
 
+    token = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN") or os.getenv("GITHUB_TOKEN")
+    if not token:
+        print("⚠️  No GitHub token — rate limits apply (60 req/hr)")
+
     print(BANNER)
-    print("Initializing MCP client and agent...")
+    print("⏳ Starting MCP server (first Docker pull may take ~30s)…\n")
 
-    # MCP Client from config
-    client = MCPClient.from_config_file("config.json")
+    from langchain_groq import ChatGroq
+    from mcp_use import MCPAgent, MCPClient
 
-    # Groq LLM
+    client = MCPClient(_load_config())
     llm = ChatGroq(
         model="llama-3.3-70b-versatile",
         temperature=0.3,
-        max_tokens=2048,
+        max_tokens=1500,
         groq_api_key=groq_key,
     )
-
-    # MCPAgent with memory
-    agent = MCPAgent(
-        llm=llm,
-        client=client,
-        max_steps=10,
-        memory_enabled=True,
-    )
-
-    print("✅ Agent ready! Type 'help' for example prompts.\n")
+    agent = MCPAgent(llm=llm, client=client, max_steps=10, memory_enabled=True)
+    print("✅ Ready. Type 'help' for examples.\n")
 
     try:
         while True:
@@ -78,34 +79,33 @@ async def run_cli():
 
             if not user_input:
                 continue
-
-            if user_input.lower() in ("exit", "quit"):
-                print("Ending session. Goodbye! 👋")
+            cmd = user_input.lower()
+            if cmd in ("exit", "quit"):
+                print("Goodbye! 👋")
                 break
-
-            if user_input.lower() == "clear":
+            if cmd == "clear":
                 agent.clear_conversation_history()
-                print("🧹 Conversation memory cleared.\n")
+                print("🧹 Memory cleared.\n")
                 continue
-
-            if user_input.lower() == "help":
+            if cmd == "help":
                 print(HELP_TEXT)
                 continue
 
-            print("\n🤖 Assistant: ", end="", flush=True)
+            print("\n🤖 ", end="", flush=True)
             try:
-                response = await agent.run(user_input)
-                print(response)
+                print(await agent.run(user_input))
             except Exception as e:
-                print(f"\n❌ Error: {e}")
+                print(f"❌ {e}")
             print()
-
     finally:
-        print("\nClosing MCP sessions...")
-        if client and client.sessions:
-            await client.close_all_sessions()
-        print("Done. Bye!")
+        print("Closing sessions…")
+        try:
+            if client.sessions:
+                await client.close_all_sessions()
+        except Exception:
+            pass
+        print("Bye!")
 
 
 if __name__ == "__main__":
-    asyncio.run(run_cli())
+    asyncio.run(main())

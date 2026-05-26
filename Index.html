@@ -1,322 +1,346 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GitHub Intelligence Platform</title>
-  <style>
-    :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --surface2: #21262d;
-      --border: #30363d;
-      --accent: #238636;
-      --accent-hover: #2ea043;
-      --blue: #1f6feb;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --purple: #8957e5;
-      --orange: #d29922;
-    }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GitHub Intelligence</title>
+<style>
+:root {
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --surface2:  #21262d;
+  --border:    #30363d;
+  --text:      #e6edf3;
+  --muted:     #8b949e;
+  --green:     #238636;
+  --green-h:   #2ea043;
+  --blue:      #1f6feb;
+  --blue-h:    #388bfd;
+  --purple:    #8957e5;
+  --purple-h:  #a371f7;
+  --red:       #da3633;
+  --orange:    #d29922;
+  --online:    #3fb950;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 10;
+}
+.logo { font-size: 1.5rem; line-height: 1; }
+.brand h1 { font-size: 1rem; font-weight: 600; }
+.brand p  { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+.status-pills { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.pill {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.72rem; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 9px;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.dot.on  { background: var(--online); }
+.dot.off { background: var(--red); }
+.dot.warn{ background: var(--orange); }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+/* ── Layout ── */
+.layout { display: flex; flex: 1; overflow: hidden; }
 
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+/* ── Sidebar ── */
+.sidebar {
+  width: 256px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.sb-block { padding: 14px 12px; border-bottom: 1px solid var(--border); }
+.sb-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  margin-bottom: 9px;
+  font-weight: 600;
+}
+input[type="text"] {
+  width: 100%;
+  padding: 7px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 6px;
+  transition: border-color .15s;
+}
+input[type="text"]:focus { border-color: var(--blue); }
+.btn {
+  display: block; width: 100%;
+  padding: 7px 10px;
+  border: none; border-radius: 6px;
+  font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+  margin-bottom: 5px;
+}
+.btn:last-child { margin-bottom: 0; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-green  { background: var(--green);  color: #fff; }
+.btn-green:hover:not(:disabled)  { background: var(--green-h); }
+.btn-blue   { background: var(--blue);   color: #fff; }
+.btn-blue:hover:not(:disabled)   { background: var(--blue-h); }
+.btn-purple { background: var(--purple); color: #fff; }
+.btn-purple:hover:not(:disabled) { background: var(--purple-h); }
+.btn-ghost {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 400; text-align: left;
+  display: flex; align-items: center; gap: 7px;
+  transition: background .15s, border-color .15s;
+}
+.btn-ghost:hover:not(:disabled) { background: var(--surface2); border-color: var(--blue); }
+.btn-danger { background: transparent; color: var(--red); border: 1px solid var(--border); font-weight: 400; }
+.btn-danger:hover:not(:disabled) { background: rgba(218,54,51,.1); border-color: var(--red); }
 
-    header h1 { font-size: 1.2rem; font-weight: 600; }
-    header p { color: var(--muted); font-size: 0.85rem; }
+/* ── Chat area ── */
+.chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-    .status-dots {
-      margin-left: auto;
-      display: flex;
-      gap: 16px;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
+.messages {
+  flex: 1; overflow-y: auto;
+  padding: 20px 24px;
+  display: flex; flex-direction: column; gap: 16px;
+  scroll-behavior: smooth;
+}
 
-    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: #3fb950; }
-    .dot.red { background: #f85149; }
-    .dot.yellow { background: var(--orange); }
+/* Welcome screen */
+.welcome {
+  margin: auto;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  max-width: 540px;
+}
+.welcome .octo { font-size: 3rem; margin-bottom: 14px; }
+.welcome h2 { font-size: 1.4rem; color: var(--text); margin-bottom: 8px; font-weight: 600; }
+.welcome p { font-size: 0.88rem; line-height: 1.7; margin-bottom: 20px; }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.chip {
+  padding: 5px 13px;
+  border: 1px solid var(--border);
+  border-radius: 20px; font-size: 0.78rem;
+  cursor: pointer; transition: border-color .15s, background .15s;
+  color: var(--text);
+}
+.chip:hover { border-color: var(--blue); background: var(--surface2); }
 
-    .layout {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      height: calc(100vh - 57px);
-    }
+/* Messages */
+.msg { display: flex; flex-direction: column; max-width: 760px; }
+.msg.user { align-self: flex-end; align-items: flex-end; }
+.msg.bot  { align-self: flex-start; align-items: flex-start; }
+.msg-who { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; padding: 0 2px; }
+.msg-body {
+  padding: 11px 15px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.user .msg-body {
+  background: var(--blue);
+  color: #fff;
+  border-bottom-right-radius: 3px;
+}
+.bot .msg-body {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 3px;
+  color: var(--text);
+}
+.bot .msg-body.error { border-color: var(--red); color: #f85149; }
 
-    /* ── Sidebar ── */
-    .sidebar {
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-    }
+/* Card results (analyze, issues, PRs, etc.) */
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--blue);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text);
+  max-width: 760px;
+  align-self: flex-start;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.result-card h4 { color: var(--blue-h); font-size: 0.88rem; margin-bottom: 8px; }
+.result-card.green { border-left-color: var(--green); }
+.result-card.green h4 { color: var(--green-h); }
 
-    .sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
-    .sidebar-section h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 12px; }
+/* Typing indicator */
+.typing-wrap { align-self: flex-start; }
+.typing {
+  display: flex; gap: 5px; align-items: center;
+  padding: 11px 15px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px; border-bottom-left-radius: 3px;
+  width: fit-content;
+}
+.typing span {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted);
+  animation: bounce 1.2s ease-in-out infinite;
+}
+.typing span:nth-child(2) { animation-delay: .2s; }
+.typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes bounce {
+  0%,80%,100% { transform: translateY(0); }
+  40% { transform: translateY(-7px); }
+}
 
-    .tool-btn {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      width: 100%;
-      padding: 10px 12px;
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 0.875rem;
-      cursor: pointer;
-      margin-bottom: 8px;
-      transition: background 0.15s, border-color 0.15s;
-      text-align: left;
-    }
+/* ── Input bar ── */
+.input-bar {
+  display: flex; gap: 10px; align-items: flex-end;
+  padding: 12px 18px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.input-bar textarea {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  padding: 9px 12px;
+  resize: none;
+  outline: none;
+  min-height: 40px;
+  max-height: 140px;
+  overflow-y: auto;
+  transition: border-color .15s;
+}
+.input-bar textarea:focus { border-color: var(--blue); }
+.send-btn {
+  padding: 9px 18px;
+  background: var(--green);
+  border: none; border-radius: 8px;
+  color: #fff; font-size: 0.88rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; height: 40px;
+  transition: background .15s;
+}
+.send-btn:hover:not(:disabled) { background: var(--green-h); }
+.send-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-    .tool-btn:hover { background: var(--surface2); border-color: #58a6ff; }
-    .tool-btn .icon { font-size: 1.1rem; }
-
-    input, textarea {
-      width: 100%;
-      padding: 10px 12px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 0.875rem;
-      font-family: inherit;
-      margin-bottom: 8px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    input:focus, textarea:focus { border-color: var(--blue); }
-    textarea { resize: vertical; min-height: 70px; }
-
-    .btn {
-      width: 100%;
-      padding: 9px 14px;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s, opacity 0.15s;
-    }
-
-    .btn-green { background: var(--accent); color: #fff; }
-    .btn-green:hover { background: var(--accent-hover); }
-    .btn-blue { background: var(--blue); color: #fff; margin-top: 4px; }
-    .btn-blue:hover { background: #388bfd; }
-    .btn-red { background: #da3633; color: #fff; margin-top: 4px; }
-    .btn-red:hover { background: #f85149; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    /* ── Chat area ── */
-    .chat-area {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .message {
-      max-width: 820px;
-      width: 100%;
-    }
-
-    .message.user { align-self: flex-end; }
-    .message.assistant { align-self: flex-start; }
-
-    .msg-bubble {
-      padding: 14px 18px;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      line-height: 1.65;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .user .msg-bubble {
-      background: var(--blue);
-      color: #fff;
-      border-bottom-right-radius: 2px;
-    }
-
-    .assistant .msg-bubble {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 2px;
-    }
-
-    .msg-label {
-      font-size: 0.75rem;
-      color: var(--muted);
-      margin-bottom: 4px;
-      padding: 0 4px;
-    }
-
-    .user .msg-label { text-align: right; }
-
-    .typing {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      padding: 14px 18px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      border-bottom-left-radius: 2px;
-      width: fit-content;
-    }
-
-    .typing span {
-      width: 8px; height: 8px;
-      background: var(--muted);
-      border-radius: 50%;
-      animation: bounce 1.2s infinite;
-    }
-
-    .typing span:nth-child(2) { animation-delay: 0.2s; }
-    .typing span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes bounce {
-      0%, 80%, 100% { transform: translateY(0); }
-      40% { transform: translateY(-6px); }
-    }
-
-    .chat-input-bar {
-      padding: 16px 24px;
-      border-top: 1px solid var(--border);
-      background: var(--surface);
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
-
-    .chat-input-bar textarea {
-      flex: 1;
-      margin: 0;
-      min-height: 44px;
-      max-height: 140px;
-    }
-
-    .send-btn {
-      padding: 10px 20px;
-      background: var(--accent);
-      border: none;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      height: 44px;
-      white-space: nowrap;
-      transition: background 0.15s;
-    }
-
-    .send-btn:hover { background: var(--accent-hover); }
-    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .welcome {
-      text-align: center;
-      color: var(--muted);
-      margin: auto;
-      padding: 40px;
-    }
-
-    .welcome h2 { font-size: 1.5rem; color: var(--text); margin-bottom: 10px; }
-    .welcome p { font-size: 0.9rem; line-height: 1.7; max-width: 460px; margin: 0 auto 20px; }
-    .welcome-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-
-    .chip {
-      padding: 6px 14px;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
-    }
-
-    .chip:hover { border-color: var(--blue); background: var(--surface2); }
-  </style>
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: #21262d; border: 1px solid var(--border);
+  color: var(--text); padding: 10px 16px;
+  border-radius: 8px; font-size: 0.83rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5);
+  z-index: 9999;
+  transform: translateY(20px); opacity: 0;
+  transition: transform .25s, opacity .25s;
+  pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.ok   { border-color: var(--green); }
+.toast.err  { border-color: var(--red); }
+</style>
 </head>
 <body>
 
+<!-- Header -->
 <header>
-  <span style="font-size:1.5rem">🐙</span>
-  <div>
-    <h1>GitHub Intelligence Platform</h1>
-    <p>MCP + mcp_use + Groq llama3-70b</p>
+  <span class="logo">🐙</span>
+  <div class="brand">
+    <h1>GitHub Intelligence</h1>
+    <p>Groq llama-3.3-70b · Official GitHub MCP Server</p>
   </div>
-  <div class="status-dots">
-    <span><span class="dot" id="apiDot"></span><span id="apiStatus">Checking…</span></span>
-    <span><span class="dot" id="agentDot"></span><span id="agentStatus">Agent</span></span>
+  <div class="status-pills">
+    <div class="pill"><span class="dot" id="dotApi"></span><span id="lblApi">Checking…</span></div>
+    <div class="pill"><span class="dot" id="dotGh"></span><span id="lblGh">GitHub</span></div>
   </div>
 </header>
 
 <div class="layout">
+
   <!-- Sidebar -->
   <aside class="sidebar">
 
-    <div class="sidebar-section">
-      <h3>🔍 Analyze Repo</h3>
-      <input type="text" id="repoInput" placeholder="owner/repo (e.g. facebook/react)" />
-      <button class="btn btn-green" onclick="analyzeRepo()">Analyze Repository</button>
+    <div class="sb-block">
+      <div class="sb-label">🔬 Analyze Repo</div>
+      <input type="text" id="inAnalyze" placeholder="owner/repo  e.g. facebook/react"/>
+      <button class="btn btn-green" onclick="doAnalyze()">Analyze Repository</button>
     </div>
 
-    <div class="sidebar-section">
-      <h3>👤 User Profile</h3>
-      <input type="text" id="userInput" placeholder="GitHub username" />
-      <button class="btn btn-blue" onclick="lookupUser()">Get Profile</button>
+    <div class="sb-block">
+      <div class="sb-label">👤 User Profile</div>
+      <input type="text" id="inUser" placeholder="GitHub username"/>
+      <button class="btn btn-blue" onclick="doUser()">View Profile</button>
     </div>
 
-    <div class="sidebar-section">
-      <h3>🔎 Search Repos</h3>
-      <input type="text" id="searchInput" placeholder="Search query…" />
-      <button class="btn btn-blue" onclick="searchRepos()">Search</button>
+    <div class="sb-block">
+      <div class="sb-label">🔎 Search Repos</div>
+      <input type="text" id="inSearch" placeholder="search query…"/>
+      <button class="btn btn-blue" onclick="doSearch()">Search</button>
     </div>
 
-    <div class="sidebar-section">
-      <h3>⚡ Quick Tools</h3>
-      <button class="tool-btn" onclick="quickPrompt('Get trending Python repositories today')">
-        <span class="icon">📈</span> Trending Today
-      </button>
-      <button class="tool-btn" onclick="quickPrompt('Get trending JavaScript repositories this week')">
-        <span class="icon">🌐</span> JS Trending (week)
-      </button>
-      <button class="tool-btn" onclick="quickPrompt('Search for the best machine learning repositories on GitHub')">
-        <span class="icon">🤖</span> ML Repos
-      </button>
-      <button class="tool-btn" onclick="quickPrompt('Search for beginner-friendly open source projects to contribute to')">
-        <span class="icon">🌱</span> Good First Issues
-      </button>
+    <div class="sb-block">
+      <div class="sb-label">📋 Issues &amp; PRs</div>
+      <input type="text" id="inIssues" placeholder="owner/repo"/>
+      <button class="btn btn-purple" onclick="doIssues()">Open Issues</button>
+      <button class="btn btn-purple" onclick="doPulls()">Open PRs</button>
     </div>
 
-    <div class="sidebar-section">
-      <h3>🧹 Session</h3>
-      <button class="btn btn-red" onclick="clearMemory()">Clear Conversation Memory</button>
+    <div class="sb-block">
+      <div class="sb-label">🔥 Trending</div>
+      <button class="btn btn-ghost" onclick="doTrending('')">All languages</button>
+      <button class="btn btn-ghost" onclick="doTrending('python')">🐍 Python</button>
+      <button class="btn btn-ghost" onclick="doTrending('javascript')">🌐 JavaScript</button>
+      <button class="btn btn-ghost" onclick="doTrending('rust')">🦀 Rust</button>
+      <button class="btn btn-ghost" onclick="doTrending('go')">🐹 Go</button>
+    </div>
+
+    <div class="sb-block">
+      <div class="sb-label">⚡ Quick Prompts</div>
+      <button class="btn btn-ghost" onclick="chat('What are the trending AI agent repos on GitHub in 2025?')">🧠 AI Agents 2025</button>
+      <button class="btn btn-ghost" onclick="chat('Search for the most starred machine learning repositories')">🤖 Top ML Repos</button>
+      <button class="btn btn-ghost" onclick="chat('Find beginner-friendly repos with good-first-issue labels')">🌱 Good First Issues</button>
+      <button class="btn btn-ghost" onclick="chat('Search for the most popular JavaScript frameworks on GitHub')">📦 JS Frameworks</button>
+    </div>
+
+    <div class="sb-block">
+      <div class="sb-label">🧹 Session</div>
+      <button class="btn btn-danger" onclick="doClear()">Clear Memory</button>
     </div>
 
   </aside>
@@ -325,130 +349,160 @@
   <main class="chat-area">
     <div class="messages" id="messages">
       <div class="welcome" id="welcome">
-        <h2>🤖 GitHub Intelligence</h2>
-        <p>Ask anything about GitHub repos, users, trending projects, or code stats. The AI agent will use MCP tools to fetch real data.</p>
-        <div class="welcome-chips">
-          <span class="chip" onclick="quickPrompt('Analyze microsoft/vscode')">Analyze vscode</span>
-          <span class="chip" onclick="quickPrompt('Who is torvalds on GitHub?')">torvalds profile</span>
-          <span class="chip" onclick="quickPrompt('What are the trending repos today?')">Trending today</span>
-          <span class="chip" onclick="quickPrompt('Search for rust web frameworks')">Rust web frameworks</span>
-          <span class="chip" onclick="quickPrompt('Show commits for vercel/next.js')">Next.js commits</span>
+        <div class="octo">🐙</div>
+        <h2>GitHub Intelligence</h2>
+        <p>Analyze repos, explore users, search code, track issues and PRs — all powered by GitHub's official MCP server and Groq AI.</p>
+        <div class="chips">
+          <span class="chip" onclick="chat('Analyze microsoft/vscode')">Analyze vscode</span>
+          <span class="chip" onclick="chat('Get the profile of torvalds')">torvalds profile</span>
+          <span class="chip" onclick="chat('List open issues in facebook/react')">React issues</span>
+          <span class="chip" onclick="chat('Show open PRs in vercel/next.js')">Next.js PRs</span>
+          <span class="chip" onclick="chat('Search for Rust web frameworks')">Rust frameworks</span>
+          <span class="chip" onclick="chat('Latest commits in nodejs/node')">Node.js commits</span>
+          <span class="chip" onclick="chat('Get README of django/django')">Django README</span>
+          <span class="chip" onclick="chat('Search for LLM fine-tuning repos')">LLM fine-tuning</span>
         </div>
       </div>
     </div>
 
-    <div class="chat-input-bar">
-      <textarea id="chatInput" placeholder="Ask anything about GitHub…" rows="1"
-        onkeydown="handleKey(event)"></textarea>
+    <div class="input-bar">
+      <textarea id="chatInput" rows="1" placeholder="Ask anything about GitHub…" onkeydown="handleKey(event)"></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendChat()">Send ↑</button>
     </div>
   </main>
+
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
+// ── Config ──────────────────────────────────────────────────
 const API = 'http://localhost:8000';
 let busy = false;
 
-// ── Status check ────────────────────────────────────────────
+// ── Status polling ───────────────────────────────────────────
 async function checkStatus() {
   try {
-    const r = await fetch(`${API}/status`);
+    const r = await fetch(`${API}/status`, { signal: AbortSignal.timeout(4000) });
     const d = await r.json();
-    document.getElementById('apiDot').className = 'dot';
-    document.getElementById('apiStatus').textContent = 'API Online';
-    document.getElementById('agentDot').className = d.agent === 'ready' ? 'dot' : 'dot red';
-    document.getElementById('agentStatus').textContent = d.agent === 'ready' ? 'Agent Ready' : 'Agent Error';
+    setDot('dotApi', 'lblApi', true, 'API online');
+    setDot('dotGh', 'lblGh', d.github_token, d.github_token ? 'GitHub ✓' : 'No token');
   } catch {
-    document.getElementById('apiDot').className = 'dot red';
-    document.getElementById('apiStatus').textContent = 'API Offline';
-    document.getElementById('agentDot').className = 'dot red';
-    document.getElementById('agentStatus').textContent = 'Agent Offline';
+    setDot('dotApi', 'lblApi', false, 'API offline');
+    setDot('dotGh', 'lblGh', false, 'GitHub');
   }
 }
+function setDot(dotId, lblId, ok, label) {
+  document.getElementById(dotId).className = 'dot ' + (ok ? 'on' : 'off');
+  document.getElementById(lblId).textContent = label;
+}
+checkStatus();
+setInterval(checkStatus, 20000);
 
-window.addEventListener('load', checkStatus);
-setInterval(checkStatus, 15000);
+// ── Toast ────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 3500);
+}
 
-// ── Message rendering ───────────────────────────────────────
-function hideWelcome() {
+// ── Message helpers ──────────────────────────────────────────
+function removeWelcome() {
   const w = document.getElementById('welcome');
   if (w) w.remove();
 }
 
-function addMessage(role, text) {
-  hideWelcome();
-  const wrap = document.createElement('div');
-  wrap.className = `message ${role}`;
-  wrap.innerHTML = `
-    <div class="msg-label">${role === 'user' ? 'You' : '🤖 Assistant'}</div>
-    <div class="msg-bubble">${escHtml(text)}</div>
-  `;
-  document.getElementById('messages').appendChild(wrap);
-  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  return wrap;
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addMsg(role, text, isError = false) {
+  removeWelcome();
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `
+    <div class="msg-who">${role === 'user' ? 'You' : '🐙 GitHub AI'}</div>
+    <div class="msg-body${isError ? ' error' : ''}">${esc(text)}</div>`;
+  document.getElementById('messages').appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return div;
+}
+
+function addCard(html, colorClass = '') {
+  removeWelcome();
+  const div = document.createElement('div');
+  div.className = 'result-card ' + colorClass;
+  div.innerHTML = html;
+  document.getElementById('messages').appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return div;
 }
 
 function addTyping() {
-  hideWelcome();
+  removeWelcome();
   const wrap = document.createElement('div');
-  wrap.className = 'message assistant';
-  wrap.id = 'typing-indicator';
-  wrap.innerHTML = `
-    <div class="msg-label">🤖 Assistant</div>
-    <div class="typing"><span></span><span></span><span></span></div>
-  `;
+  wrap.className = 'typing-wrap';
+  wrap.id = '_typing';
+  wrap.innerHTML = `<div class="msg-who">🐙 GitHub AI</div><div class="typing"><span></span><span></span><span></span></div>`;
   document.getElementById('messages').appendChild(wrap);
   wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
-
 function removeTyping() {
-  const el = document.getElementById('typing-indicator');
+  const el = document.getElementById('_typing');
   if (el) el.remove();
 }
 
-function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// ── Busy state ───────────────────────────────────────────────
+function setBusy(b) {
+  busy = b;
+  document.getElementById('sendBtn').disabled = b;
+  document.getElementById('sendBtn').textContent = b ? '…' : 'Send ↑';
 }
 
-// ── Send helpers ────────────────────────────────────────────
-function setBusy(state) {
-  busy = state;
-  document.getElementById('sendBtn').disabled = state;
-}
-
-async function apiPost(endpoint, body) {
-  const r = await fetch(`${API}${endpoint}`, {
-    method: 'POST',
+// ── API helpers ──────────────────────────────────────────────
+async function apiFetch(path, method = 'GET', body = null) {
+  const opts = {
+    method,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+    signal: AbortSignal.timeout(130_000),
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  const json = await r.json();
+  if (!r.ok) throw new Error(json.error || `HTTP ${r.status}`);
+  return json;
 }
 
-async function apiGet(endpoint) {
-  const r = await fetch(`${API}${endpoint}`);
-  return r.json();
-}
-
-// ── Chat ────────────────────────────────────────────────────
+// ── Chat (free-form via MCP agent) ───────────────────────────
 async function sendChat() {
   if (busy) return;
-  const input = document.getElementById('chatInput');
-  const msg = input.value.trim();
-  if (!msg) return;
+  const ta = document.getElementById('chatInput');
+  const text = ta.value.trim();
+  if (!text) return;
+  ta.value = '';
+  ta.style.height = '';
+  chat(text);
+}
 
-  input.value = '';
-  addMessage('user', msg);
+async function chat(message) {
+  if (busy) return;
+  addMsg('user', message);
   setBusy(true);
   addTyping();
-
   try {
-    const data = await apiPost('/chat', { message: msg });
+    const d = await apiFetch('/chat', 'POST', { message });
     removeTyping();
-    addMessage('assistant', data.response || data.error || 'No response');
+    addMsg('bot', d.response || 'No response.');
   } catch (e) {
     removeTyping();
-    addMessage('assistant', `❌ Error: ${e.message}`);
+    const msg = e.name === 'TimeoutError'
+      ? '⏱️ Timed out — the agent is thinking too long. Try a simpler question.'
+      : '❌ ' + e.message;
+    addMsg('bot', msg, true);
+    showToast(msg, 'err');
   } finally {
     setBusy(false);
   }
@@ -461,50 +515,179 @@ function handleKey(e) {
   }
 }
 
-function quickPrompt(text) {
-  document.getElementById('chatInput').value = text;
-  sendChat();
-}
+// Auto-resize textarea
+document.getElementById('chatInput').addEventListener('input', function () {
+  this.style.height = '';
+  this.style.height = Math.min(this.scrollHeight, 140) + 'px';
+});
 
-// ── Sidebar actions ─────────────────────────────────────────
-async function analyzeRepo() {
-  const repo = document.getElementById('repoInput').value.trim();
-  if (!repo) return alert('Enter a repo name');
+// ── Sidebar actions ──────────────────────────────────────────
 
-  addMessage('user', `Analyze the repository: ${repo}`);
+async function doAnalyze() {
+  const repo = document.getElementById('inAnalyze').value.trim();
+  if (!repo) return showToast('Enter a repo: owner/repo', 'err');
+  if (!repo.includes('/')) return showToast('Format: owner/repo  e.g. facebook/react', 'err');
+  if (busy) return;
+  addMsg('user', `Analyze repository: ${repo}`);
   setBusy(true);
   addTyping();
-
   try {
-    const data = await apiPost('/analyze', { repository: repo });
+    const d = await apiFetch('/analyze', 'POST', { repository: repo });
     removeTyping();
-    addMessage('assistant', data.analysis || data.error || 'No response');
+    const info = d.info || {};
+    const header = `<h4>📊 ${esc(info.name || repo)}</h4>` +
+      `⭐ ${(info.stars||0).toLocaleString()}  🍴 ${(info.forks||0).toLocaleString()}  ` +
+      `🐛 ${info.open_issues||0} issues  🌐 ${info.language||'?'}\n\n`;
+    addCard(header + esc(d.analysis || 'No analysis.'), 'green');
   } catch (e) {
     removeTyping();
-    addMessage('assistant', `❌ Error: ${e.message}`);
-  } finally {
-    setBusy(false);
-  }
+    addMsg('bot', '❌ ' + e.message, true);
+    showToast('❌ ' + e.message, 'err');
+  } finally { setBusy(false); }
 }
 
-async function lookupUser() {
-  const username = document.getElementById('userInput').value.trim();
-  if (!username) return alert('Enter a GitHub username');
-  quickPrompt(`Get the GitHub profile and top repositories for user '${username}'`);
-}
-
-async function searchRepos() {
-  const query = document.getElementById('searchInput').value.trim();
-  if (!query) return alert('Enter a search query');
-  quickPrompt(`Search GitHub for repositories matching: '${query}'. Show top results with descriptions and stars.`);
-}
-
-async function clearMemory() {
+async function doUser() {
+  const username = document.getElementById('inUser').value.trim();
+  if (!username) return showToast('Enter a GitHub username', 'err');
+  if (busy) return;
+  addMsg('user', `View profile: ${username}`);
+  setBusy(true);
+  addTyping();
   try {
-    await apiPost('/clear', {});
-    addMessage('assistant', '🧹 Conversation memory cleared. Starting fresh!');
+    const d = await apiFetch(`/user/${encodeURIComponent(username)}`);
+    removeTyping();
+    const p = d.profile || {};
+    let html = `<h4>👤 ${esc(p.name || p.username || username)}</h4>`;
+    if (p.bio)      html += esc(p.bio) + '\n';
+    if (p.company)  html += `🏢 ${esc(p.company)}\n`;
+    if (p.location) html += `📍 ${esc(p.location)}\n`;
+    html += `\nFollowers: ${(p.followers||0).toLocaleString()}  ·  Repos: ${p.public_repos||0}`;
+    if (d.top_repos && d.top_repos.length) {
+      html += '\n\nTop repos:\n' + d.top_repos.map(r =>
+        `  ⭐ ${r.stars}  ${esc(r.name)}${r.language ? '  [' + esc(r.language) + ']' : ''}` +
+        (r.description ? '\n     ' + esc(r.description) : '')
+      ).join('\n');
+    }
+    addCard(html);
   } catch (e) {
-    alert('Failed to clear memory: ' + e.message);
+    removeTyping();
+    addMsg('bot', '❌ ' + e.message, true);
+    showToast('❌ ' + e.message, 'err');
+  } finally { setBusy(false); }
+}
+
+async function doSearch() {
+  const query = document.getElementById('inSearch').value.trim();
+  if (!query) return showToast('Enter a search query', 'err');
+  if (busy) return;
+  addMsg('user', `Search: ${query}`);
+  setBusy(true);
+  addTyping();
+  try {
+    const d = await apiFetch('/search', 'POST', { query });
+    removeTyping();
+    const results = d.results || [];
+    if (!results.length) { addMsg('bot', 'No results found.'); return; }
+    let html = `<h4>🔎 Search: "${esc(query)}" — ${results.length} results</h4>`;
+    html += results.map(r =>
+      `⭐ ${(r.stars||0).toLocaleString()}  <b style="color:var(--blue-h)">${esc(r.name)}</b>` +
+      (r.language ? `  [${esc(r.language)}]` : '') +
+      `\n  ${esc(r.description || 'No description')}`
+    ).join('\n\n');
+    addCard(html);
+  } catch (e) {
+    removeTyping();
+    addMsg('bot', '❌ ' + e.message, true);
+    showToast('❌ ' + e.message, 'err');
+  } finally { setBusy(false); }
+}
+
+async function doIssues() {
+  const repo = document.getElementById('inIssues').value.trim();
+  if (!repo) return showToast('Enter owner/repo', 'err');
+  if (busy) return;
+  addMsg('user', `Open issues: ${repo}`);
+  setBusy(true);
+  addTyping();
+  try {
+    const d = await apiFetch(`/issues/${repo}`);
+    removeTyping();
+    const issues = d.issues || [];
+    if (!issues.length) { addMsg('bot', `No open issues found in ${repo}.`); return; }
+    let html = `<h4>🐛 Open Issues — ${esc(repo)} (${issues.length})</h4>`;
+    html += issues.map(i =>
+      `#${i.number}  ${esc(i.title)}` +
+      (i.labels.length ? `  [${i.labels.map(esc).join(', ')}]` : '') +
+      `\n  Opened: ${i.created_at.slice(0,10)}`
+    ).join('\n\n');
+    addCard(html);
+  } catch (e) {
+    removeTyping();
+    addMsg('bot', '❌ ' + e.message, true);
+    showToast('❌ ' + e.message, 'err');
+  } finally { setBusy(false); }
+}
+
+async function doPulls() {
+  const repo = document.getElementById('inIssues').value.trim();
+  if (!repo) return showToast('Enter owner/repo', 'err');
+  if (busy) return;
+  addMsg('user', `Open PRs: ${repo}`);
+  setBusy(true);
+  addTyping();
+  try {
+    const d = await apiFetch(`/pulls/${repo}`);
+    removeTyping();
+    const pulls = d.pulls || [];
+    if (!pulls.length) { addMsg('bot', `No open pull requests in ${repo}.`); return; }
+    let html = `<h4>🔀 Open Pull Requests — ${esc(repo)} (${pulls.length})</h4>`;
+    html += pulls.map(p =>
+      `#${p.number}  ${esc(p.title)}\n  by @${esc(p.author)}  ·  ${p.created_at.slice(0,10)}`
+    ).join('\n\n');
+    addCard(html);
+  } catch (e) {
+    removeTyping();
+    addMsg('bot', '❌ ' + e.message, true);
+    showToast('❌ ' + e.message, 'err');
+  } finally { setBusy(false); }
+}
+
+async function doTrending(lang) {
+  if (busy) return;
+  const label = lang ? lang.charAt(0).toUpperCase() + lang.slice(1) : 'All';
+  addMsg('user', `Trending repos — ${label}`);
+  setBusy(true);
+  addTyping();
+  try {
+    const qs = lang ? `?language=${encodeURIComponent(lang)}` : '';
+    const d = await apiFetch(`/trending${qs}`);
+    removeTyping();
+    const results = d.results || [];
+    if (!results.length || results[0].error) {
+      addMsg('bot', results[0]?.error || 'No trending data.', true);
+      return;
+    }
+    let html = `<h4>🔥 Trending — ${esc(label)}</h4>`;
+    html += results.map((r, i) =>
+      `${i+1}. <b style="color:var(--blue-h)">${esc(r.name)}</b>` +
+      (r.stars_today ? `  +${esc(r.stars_today)} today` : r.stars ? `  ⭐ ${(r.stars||0).toLocaleString()}` : '') +
+      `\n   ${esc(r.description || 'No description')}`
+    ).join('\n\n');
+    addCard(html, 'green');
+  } catch (e) {
+    removeTyping();
+    addMsg('bot', '❌ ' + e.message, true);
+    showToast('❌ ' + e.message, 'err');
+  } finally { setBusy(false); }
+}
+
+async function doClear() {
+  try {
+    await apiFetch('/clear', 'POST');
+    addMsg('bot', '🧹 Session cleared.');
+    showToast('Session cleared', 'ok');
+  } catch (e) {
+    showToast('Failed to clear: ' + e.message, 'err');
   }
 }
 </script>
