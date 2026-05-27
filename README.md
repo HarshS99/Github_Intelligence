@@ -146,7 +146,7 @@ GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxx
 GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-> 💡 **Tip:** GitHub token needs **no scopes** for public repo access.
+> 💡 **Tip:** Create a token with `repo` scope for full read/write and PR support. For public read-only operations, a token with no scopes is sufficient.
 
 ---
 
@@ -172,9 +172,23 @@ docker pull ghcr.io/github/github-mcp-server
 
 ### Step 5 — Run It!
 
+This project supports both the original Flask API and a new Streamlit automation studio.
+
 ```bash
+# Flask / web UI
 python app.py
+
+# Streamlit automation UI
+streamlit run streamlit_app.py
 ```
+
+The Streamlit studio includes built-in AI workflows for:
+- repository structure analysis
+- README improvement
+- bug fix PR generation
+- custom GitHub automation using MCP tools
+
+Use `.env.example` as a template when creating your `.env` file.
 
 You'll see:
 
@@ -334,6 +348,23 @@ Install Docker Desktop: [https://docs.docker.com/get-docker/](https://docs.docke
                          │     GitHub API       │
                          │   api.github.com     │
                          └─────────────────────┘
+```
+
+---
+
+## 📄 Project Structure
+
+```
+.
+├── app.py            # Flask API server  ← start here
+├── cli.py            # Terminal interface
+├── github_client.py  # GitHub REST API client (used by app.py and streamlit_app.py)
+├── config.json       # MCP Docker config
+├── index.html        # Web UI
+├── streamlit_app.py  # Streamlit automation studio
+├── requirements.txt  # Python dependencies
+├── .env.example      # Key template (copy to .env)
+└── README.md
 ```
 
 ---

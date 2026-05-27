@@ -8,6 +8,8 @@ import base64
 import os
 import requests
 from bs4 import BeautifulSoup
+from typing import Dict, Any, Optional
+from datetime import datetime
 
 BASE_URL = "https://api.github.com"
 SCRAPE_UA = {"User-Agent": "Mozilla/5.0 (compatible; GHIntelBot/1.0)"}
@@ -25,6 +27,46 @@ def _get(path: str, params: dict = None):
     r = requests.get(f"{BASE_URL}{path}", headers=_headers(), params=params, timeout=15)
     r.raise_for_status()
     return r.json()
+
+
+def _post(path: str, json_body: dict):
+    r = requests.post(f"{BASE_URL}{path}", headers=_headers(), json=json_body, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
+def _put(path: str, json_body: dict):
+    r = requests.put(f"{BASE_URL}{path}", headers=_headers(), json=json_body, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
+def _patch(path: str, json_body: dict):
+    r = requests.patch(f"{BASE_URL}{path}", headers=_headers(), json=json_body, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
+def _delete(path: str):
+    r = requests.delete(f"{BASE_URL}{path}", headers=_headers(), timeout=15)
+    r.raise_for_status()
+    return r.json() if r.text else {}
+
+
+def get_authenticated_user() -> dict:
+    return _get("/user")
+
+
+def create_repo(name: str, description: str = "", private: bool = False, org: str = None) -> dict:
+    payload = {
+        "name": name,
+        "description": description,
+        "private": private,
+        "auto_init": True,
+    }
+    if org:
+        return _post(f"/orgs/{org}/repos", payload)
+    return _post("/user/repos", payload)
 
 
 def get_repo_info(repo: str) -> dict:
@@ -47,12 +89,58 @@ def get_repo_info(repo: str) -> dict:
     }
 
 
-def get_readme(repo: str) -> str:
-    try:
-        d = _get(f"/repos/{repo}/readme")
-        return base64.b64decode(d["content"]).decode("utf-8", errors="replace")[:4000]
-    except requests.HTTPError:
-        return "No README found."
+def get_branches(repo: str, limit: int = 50) -> list:
+    items = _get(f"/repos/{repo}/branches", {"per_page": min(limit, 100)})
+    return [{
+        "name": b["name"],
+        "commit_sha": b["commit"]["sha"],
+        "protected": b.get("protected", False),
+    } for b in items]
+
+
+def get_branch(repo: str, branch: str) -> dict:
+    return _get(f"/repos/{repo}/branches/{branch}")
+
+
+def create_branch(repo: str, new_branch: str, from_branch: str = None) -> dict:
+    base_branch = from_branch or _get(f"/repos/{repo}")["default_branch"]
+    commit_sha = _get(f"/repos/{repo}/git/ref/heads/{base_branch}")["object"]["sha"]
+    return _post(f"/repos/{repo}/git/refs", {"ref": f"refs/heads/{new_branch}", "sha": commit_sha})
+
+
+def get_file(repo: str, path: str, ref: str = None) -> dict:
+    params = {"ref": ref} if ref else None
+    d = _get(f"/repos/{repo}/contents/{path}", params=params)
+    content = base64.b64decode(d["content"]).decode("utf-8", errors="replace") if d.get("content") else ""
+    return {"path": d.get("path"), "sha": d.get("sha"), "content": content, "url": d.get("html_url"), "encoding": d.get("encoding")}
+
+
+def create_or_update_file(repo: str, path: str, message: str, content: str, branch: str = None, sha: str = None) -> dict:
+    payload = {
+        "message": message,
+        "content": base64.b64encode(content.encode("utf-8")).decode("utf-8"),
+    }
+    if branch:
+        payload["branch"] = branch
+    if sha:
+        payload["sha"] = sha
+    return _put(f"/repos/{repo}/contents/{path}", payload)
+
+
+def create_pull_request(repo: str, title: str, body: str, head: str, base: str = "main") -> dict:
+    payload = {"title": title, "body": body, "head": head, "base": base}
+    return _post(f"/repos/{repo}/pulls", payload)
+
+
+def create_issue(repo: str, title: str, body: str = "", labels: list[str] = None) -> dict:
+    payload = {"title": title, "body": body}
+    if labels:
+        payload["labels"] = labels
+    return _post(f"/repos/{repo}/issues", payload)
+
+
+def close_issue(repo: str, issue_number: int) -> dict:
+    return _patch(f"/repos/{repo}/issues/{issue_number}", {"state": "closed"})
 
 
 def get_commits(repo: str, limit: int = 10) -> list:
@@ -66,6 +154,14 @@ def get_commits(repo: str, limit: int = 10) -> list:
         }
         for c in items
     ]
+
+
+def get_readme(repo: str) -> str:
+    try:
+        d = _get(f"/repos/{repo}/readme")
+        return base64.b64decode(d["content"]).decode("utf-8", errors="replace")[:4000]
+    except requests.HTTPError:
+        return "No README found."
 
 
 def search_repos(query: str, limit: int = 10) -> list:

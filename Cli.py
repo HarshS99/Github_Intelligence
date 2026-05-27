@@ -63,7 +63,7 @@ async def main():
     llm = ChatGroq(
         model="llama-3.3-70b-versatile",
         temperature=0.3,
-        max_tokens=1500,
+        max_tokens=500,
         groq_api_key=groq_key,
     )
     agent = MCPAgent(llm=llm, client=client, max_steps=10, memory_enabled=True)
