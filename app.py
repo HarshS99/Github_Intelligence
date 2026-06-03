@@ -1,425 +1,626 @@
 """
-app.py — GitHub Intelligence API Server
-Run: python app.py
+GitHub Intelligence Platform — Streamlit UI
+Premium dark-themed interface with MCP + ScrapeGraphAI + Groq integration.
 """
 
-import asyncio
+import streamlit as st
+import time
 import json
 import os
-import threading
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
-from dotenv import load_dotenv
+import base64
+from agent import run_action, list_mcp_tools
 
-load_dotenv()
-
-app = Flask(__name__)
-CORS(app)
-
-# ── Background async event loop ──────────────────────────────
-_loop = asyncio.new_event_loop()
-
-def _start_loop(loop):
-    asyncio.set_event_loop(loop)
-    loop.run_forever()
-
-threading.Thread(target=_start_loop, args=(_loop,), daemon=True).start()
-
-
-def run_async(coro, timeout: int = 120):
-    return asyncio.run_coroutine_threadsafe(coro, _loop).result(timeout=timeout)
-
-
-# ── Startup checks ───────────────────────────────────────────
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GITHUB_TOKEN = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN") or os.getenv("GITHUB_TOKEN", "")
-
-def _load_config() -> dict:
-    path = os.path.join(os.path.dirname(__file__), "config.json")
-    with open(path) as f:
-        cfg = json.load(f)
-    cfg["mcpServers"]["github"]["env"]["GITHUB_PERSONAL_ACCESS_TOKEN"] = GITHUB_TOKEN
-    return cfg
+# ── Page Config ──────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="GitHub Intelligence Platform",
+    page_icon="logo.png",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 try:
-    _CONFIG = _load_config()
-    _CONFIG_OK = True
-except FileNotFoundError:
-    _CONFIG = {}
-    _CONFIG_OK = False
+    st.logo("logo.png")
+except AttributeError:
+    pass
+
+# ── Load Logo ────────────────────────────────────────────────────────
+try:
+    with open("logo.png", "rb") as f:
+        logo_b64 = base64.b64encode(f.read()).decode()
+    logo_src = f"data:image/png;base64,{logo_b64}"
+except Exception:
+    logo_src = ""
+
+# ── Custom CSS ───────────────────────────────────────────────────────
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    /* ── Global ── */
+    .stApp {
+        background: #07080d;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Animated grain overlay for texture */
+    .stApp::before {
+        content: '';
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(ellipse at 20% 50%, rgba(88,166,255,0.03) 0%, transparent 50%),
+                    radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.03) 0%, transparent 50%),
+                    radial-gradient(ellipse at 50% 80%, rgba(236,72,153,0.02) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* ── Sidebar ── */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0c0d14 0%, #080a10 100%) !important;
+        border-right: 1px solid rgba(88,166,255,0.08) !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown h3 {
+        color: #58a6ff !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 1.5px !important;
+        text-transform: uppercase !important;
+    }
+
+    /* ── Tabs ── */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 4px;
+        background: rgba(13,17,23,0.6);
+        border: 1px solid rgba(48,54,61,0.4);
+        border-radius: 12px;
+        padding: 4px;
+        backdrop-filter: blur(12px);
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 10px;
+        color: #6e7681;
+        font-weight: 600;
+        font-size: 0.88rem;
+        padding: 10px 20px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #c9d1d9;
+        background: rgba(88,166,255,0.05);
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, rgba(88,166,255,0.12), rgba(139,92,246,0.08)) !important;
+        color: #58a6ff !important;
+        box-shadow: 0 0 20px rgba(88,166,255,0.06);
+    }
+
+    /* ── Buttons ── */
+    .stButton > button {
+        background: linear-gradient(135deg, #1a7f37 0%, #238636 50%, #2ea043 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        padding: 10px 28px !important;
+        letter-spacing: 0.3px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 2px 8px rgba(35,134,54,0.2) !important;
+    }
+    .stButton > button:hover {
+        box-shadow: 0 6px 24px rgba(46, 160, 67, 0.35) !important;
+        transform: translateY(-2px) !important;
+    }
+    .stButton > button:active {
+        transform: translateY(0px) !important;
+    }
+
+    /* ── Text Inputs ── */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        background: rgba(10,12,18,0.9) !important;
+        border: 1px solid rgba(48,54,61,0.5) !important;
+        color: #e6edf3 !important;
+        border-radius: 10px !important;
+        font-family: 'Inter', sans-serif !important;
+        transition: all 0.2s ease !important;
+    }
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: #58a6ff !important;
+        box-shadow: 0 0 0 3px rgba(88,166,255,0.12), 0 0 20px rgba(88,166,255,0.05) !important;
+    }
+
+    /* ── Chat Messages ── */
+    [data-testid="stChatMessage"] {
+        background: rgba(13,17,23,0.5) !important;
+        border: 1px solid rgba(48,54,61,0.3) !important;
+        border-radius: 12px !important;
+        backdrop-filter: blur(8px) !important;
+    }
+
+    /* ── Expander ── */
+    .streamlit-expanderHeader {
+        background: rgba(13,17,23,0.6) !important;
+        border-radius: 10px !important;
+        color: #c9d1d9 !important;
+        font-weight: 500 !important;
+        border: 1px solid rgba(48,54,61,0.3) !important;
+    }
+
+    /* ── Spinner ── */
+    .stSpinner > div {
+        border-top-color: #58a6ff !important;
+    }
+
+    /* ── Hide default elements ── */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+
+    /* ── Custom Components ── */
+    .hero-container {
+        position: relative;
+        background: linear-gradient(135deg, rgba(88,166,255,0.04) 0%, rgba(139,92,246,0.04) 50%, rgba(236,72,153,0.03) 100%);
+        border: 1px solid rgba(88,166,255,0.1);
+        border-radius: 20px;
+        padding: 32px 36px;
+        margin-bottom: 28px;
+        backdrop-filter: blur(20px);
+        overflow: hidden;
+    }
+    .hero-container::before {
+        content: '';
+        position: absolute;
+        top: -50%; left: -50%;
+        width: 200%; height: 200%;
+        background: radial-gradient(circle at 30% 40%, rgba(88,166,255,0.06) 0%, transparent 40%),
+                    radial-gradient(circle at 70% 60%, rgba(139,92,246,0.04) 0%, transparent 40%);
+        animation: heroGlow 8s ease-in-out infinite alternate;
+        pointer-events: none;
+    }
+    @keyframes heroGlow {
+        0% { transform: translate(0, 0) rotate(0deg); }
+        100% { transform: translate(2%, -2%) rotate(3deg); }
+    }
+    .hero-title-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        position: relative;
+        z-index: 1;
+    }
+    .hero-logo {
+        height: 52px;
+        filter: drop-shadow(0 0 12px rgba(88,166,255,0.2));
+        transition: transform 0.3s ease;
+    }
+    .hero-logo:hover {
+        transform: scale(1.08) rotate(-3deg);
+    }
+    .hero-title {
+        font-size: 2.4rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, #e6edf3 0%, #58a6ff 40%, #8b5cf6 70%, #ec4899 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-size: 200% 200%;
+        animation: gradientShift 4s ease-in-out infinite alternate;
+        letter-spacing: -0.8px;
+        line-height: 1.2;
+    }
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
+    }
+    .hero-subtitle {
+        color: #6e7681;
+        font-size: 0.92rem;
+        font-weight: 400;
+        margin-top: 8px;
+        position: relative;
+        z-index: 1;
+    }
+    .hero-badges {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+        position: relative;
+        z-index: 1;
+    }
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        padding: 5px 14px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        color: #8b949e;
+        font-weight: 500;
+        transition: all 0.25s ease;
+    }
+    .hero-badge:hover {
+        background: rgba(88,166,255,0.06);
+        border-color: rgba(88,166,255,0.15);
+        color: #c9d1d9;
+    }
+    .hero-badge img {
+        height: 16px;
+        width: 16px;
+        filter: brightness(0.9);
+    }
+
+    /* ── Glass Card ── */
+    .glass-card {
+        background: rgba(13, 17, 23, 0.5);
+        border: 1px solid rgba(48, 54, 61, 0.4);
+        border-radius: 14px;
+        padding: 18px 22px;
+        margin-bottom: 10px;
+        backdrop-filter: blur(12px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+        border-color: rgba(88, 166, 255, 0.2);
+        box-shadow: 0 4px 20px rgba(88, 166, 255, 0.04);
+        transform: translateY(-1px);
+    }
+
+    /* ── Quick Action Cards ── */
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    /* ── Command Box ── */
+    .command-box {
+        background: linear-gradient(135deg, rgba(13,17,23,0.8), rgba(10,15,26,0.9));
+        border: 1px solid rgba(0,212,177,0.15);
+        border-left: 3px solid #00D4B1;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+    }
+    .command-label {
+        color: #6e7681;
+        font-weight: 700;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        margin-bottom: 6px;
+    }
+    .command-text {
+        color: #e6edf3;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9rem;
+    }
+
+    /* ── Status pill ── */
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .status-connected {
+        background: rgba(63, 185, 80, 0.1);
+        color: #3fb950;
+        border: 1px solid rgba(63, 185, 80, 0.2);
+    }
+    .status-dot {
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: #3fb950;
+        box-shadow: 0 0 6px rgba(63,185,80,0.5);
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(63,185,80,0.5); }
+        50% { opacity: 0.4; box-shadow: 0 0 2px rgba(63,185,80,0.2); }
+    }
+
+    /* ── Section headers ── */
+    .section-header {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #e6edf3;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .section-header .accent {
+        width: 3px;
+        height: 18px;
+        background: linear-gradient(180deg, #58a6ff, #8b5cf6);
+        border-radius: 2px;
+    }
+
+    /* ── Toolset cards in explorer ── */
+    .toolset-card {
+        background: rgba(13, 17, 23, 0.4);
+        border: 1px solid rgba(48, 54, 61, 0.3);
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .toolset-card:hover {
+        border-color: rgba(88, 166, 255, 0.15);
+        background: rgba(88, 166, 255, 0.03);
+        transform: translateX(4px);
+    }
+    .toolset-icon {
+        font-size: 1.3rem;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(88,166,255,0.06);
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+    .toolset-info {
+        flex: 1;
+    }
+    .toolset-name {
+        font-weight: 600;
+        color: #e6edf3;
+        font-size: 0.9rem;
+    }
+    .toolset-desc {
+        color: #6e7681;
+        font-size: 0.8rem;
+        margin-top: 2px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(88,166,255,0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(88,166,255,0.3); }
+</style>
+""", unsafe_allow_html=True)
 
 
-# ── MCP agent runner ─────────────────────────────────────────
-async def _run_prompt(prompt: str) -> str:
-    from langchain_groq import ChatGroq
-    from mcp_use import MCPAgent, MCPClient
+# ── Sidebar ──────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("### 🔑 Credentials")
 
-    client = MCPClient(_CONFIG)
-    llm = ChatGroq(
-        model="llama-3.3-70b-versatile",
-        temperature=0.3,
-        max_tokens=500,
-        groq_api_key=GROQ_API_KEY,
+    groq_key = st.text_input(
+        "Groq API Key",
+        value=os.getenv("GROQ_API_KEY", ""),
+        type="password",
     )
-    agent = MCPAgent(llm=llm, client=client, max_steps=10, memory_enabled=False)
-    try:
-        return await agent.run(prompt)
-    finally:
-        try:
-            if client.sessions:
-                await client.close_all_sessions()
-        except Exception:
-            pass
-
-
-def _agent_ok():
-    return GROQ_API_KEY and _CONFIG_OK
-
-
-def _call_agent(prompt: str):
-    try:
-        return run_async(_run_prompt(prompt)), None
-    except TimeoutError:
-        return None, "Request timed out (120s). Try a simpler query."
-    except Exception as e:
-        err_str = str(e)
-        if "429" in err_str or "rate_limit_exceeded" in err_str:
-            return None, "Rate limit exceeded on Groq. The GitHub MCP tools + your query exceed the free tier limits (or daily limit). Please try again later or upgrade your Groq tier."
-        if "413" in err_str or "Request too large" in err_str:
-            return None, "The GitHub MCP tool returned too much data, exceeding Groq's free tier token limit. Please try a more specific query."
-        return None, err_str
-
-
-# ── Screenshot helper (Playwright) ───────────────────────────
-async def _take_screenshot(url: str, path: str, width: int = 1280, height: int = 900):
-    from playwright.async_api import async_playwright
-
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page(viewport={"width": width, "height": height})
-
-        # Block unnecessary assets to load faster
-        await page.route("**/*.{mp4,webm,ogg,mp3,wav,flac,aac,woff,woff2,ttf,otf}", 
-                         lambda route: route.abort())
-
-        await page.goto(url, wait_until="networkidle", timeout=30000)
-
-        # Wait for GitHub's main content to appear
-        try:
-            await page.wait_for_selector("main", timeout=10000)
-        except Exception:
-            pass  # Proceed even if selector times out
-
-        await page.screenshot(path=path, full_page=False)
-        await browser.close()
-
-
-# ── Routes ───────────────────────────────────────────────────
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"ok": True})
-
-
-@app.route("/status", methods=["GET"])
-def status():
-    return jsonify({
-        "status": "online",
-        "agent": "ready" if _agent_ok() else "not available",
-        "model": "groq/llama-3.3-70b-versatile",
-        "github_token": bool(GITHUB_TOKEN),
-    })
-
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    if not _agent_ok():
-        return jsonify({"error": "GROQ_API_KEY not set or config.json missing"}), 503
-    data = request.get_json(silent=True) or {}
-    message = (data.get("message") or "").strip()
-    if not message:
-        return jsonify({"error": "message is required"}), 400
-    system_note = "\n\n(Note: When calling GitHub search tools, you MUST provide 'sort': 'stars', 'order': 'desc', 'page': 1, 'perPage': 10 as they are strictly required.)"
-    resp, err = _call_agent(message + system_note)
-    if err:
-        return jsonify({"error": err}), 500
-    return jsonify({"success": True, "response": resp})
-
-
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    if not _agent_ok():
-        return jsonify({"error": "GROQ_API_KEY not set or config.json missing"}), 503
-    import github_client as gh
-    data = request.get_json(silent=True) or {}
-    repo = (data.get("repository") or "").strip()
-    if not repo:
-        return jsonify({"error": "repository is required"}), 400
-    if "/" not in repo:
-        return jsonify({"error": "Use owner/repo format, e.g. facebook/react"}), 400
-    try:
-        info    = gh.get_repo_info(repo)
-        readme  = gh.get_readme(repo)
-        stats   = gh.get_languages(repo)
-        commits = gh.get_commits(repo, limit=5)
-        contribs= gh.get_contributors(repo, limit=5)
-    except Exception as e:
-        return jsonify({"error": f"GitHub API error: {e}"}), 502
-    
-    prompt = f"""
-You are a senior software engineer performing a deep technical review of a GitHub repository.
-
-Your goal is to analyze the repository like a code reviewer + system designer.
-
--------------------------
-REPOSITORY METADATA
--------------------------
-Name: {info['name']}
-Description: {info.get('description') or 'No description'}
-Stars: {info['stars']:,}
-Forks: {info['forks']:,}
-Open Issues: {info['open_issues']}
-Primary Language: {stats['primary']}
-Languages: {', '.join(f"{k} {v}%" for k, v in list(stats['languages'].items())[:6])}
-License: {info.get('license') or 'None'}
-Last Updated: {info['updated_at']}
-Topics: {', '.join(info['topics']) or 'None'}
-
-Top Contributors:
-{', '.join(c['username'] + ' (' + str(c['contributions']) + ')' for c in contribs)}
-
-Recent Commits:
-{chr(10).join('  - ' + c['date'][:10] + ': ' + c['message'] for c in commits)}
-
-README Preview:
-{readme[:1500]}
-
--------------------------
-INSTRUCTIONS
--------------------------
-
-Write a structured report with the following sections:
-
-1. Overview
-   - What problem does this repository solve?
-   - Who is it for?
-
-2. Architecture & Design
-   - High-level system design
-   - Key components and how they interact
-   - Any design patterns used
-
-3. Code Quality
-   - Readability, modularity, maintainability
-   - Testing presence
-   - Documentation quality
-
-4. Strengths
-   - What is done particularly well?
-
-5. Weaknesses / Risks
-   - Bugs, anti-patterns, scalability concerns, missing features
-
-6. Activity & Maturity
-   - Based on commits, contributors, and updates
-   - Is the project actively maintained?
-
-7. Use Cases
-   - Real-world applications of this repo
-
-8. Improvements (Actionable)
-   - Specific suggestions to improve the project
-
-9. Resume Value
-   - Would this project be strong for a software engineer’s resume?
-   - Why or why not?
-
--------------------------
-OUTPUT FORMAT
--------------------------
-- Use clear headings
-- Be concise but insightful
-- Avoid generic statements
-- Think like a senior engineer reviewing production code
-"""
-
-    resp, err = _call_agent(prompt)
-    if err:
-        return jsonify({"error": err}), 500
-    return jsonify({"success": True, "repository": repo, "info": info, "analysis": resp})
-
-
-@app.route("/user/<username>", methods=["GET"])
-def user_profile(username):
-    import github_client as gh
-    try:
-        profile = gh.get_user(username)
-        repos   = gh.get_user_repos(username, limit=6)
-        return jsonify({"success": True, "profile": profile, "top_repos": repos})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/search", methods=["POST"])
-def search():
-    import github_client as gh
-    data = request.get_json(silent=True) or {}
-    query = (data.get("query") or "").strip()
-    if not query:
-        return jsonify({"error": "query is required"}), 400
-    try:
-        return jsonify({"success": True, "results": gh.search_repos(query, limit=10)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/issues/<path:repo>", methods=["GET"])
-def get_issues(repo):
-    if "/" not in repo:
-        return jsonify({"error": "Invalid repository format. Please use 'owner/repo' (e.g. facebook/react)"}), 400
-    import github_client as gh
-    try:
-        return jsonify({"success": True, "repository": repo, "issues": gh.get_issues(repo)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/pulls/<path:repo>", methods=["GET"])
-def get_pulls(repo):
-    if "/" not in repo:
-        return jsonify({"error": "Invalid repository format. Please use 'owner/repo' (e.g. facebook/react)"}), 400
-    import github_client as gh
-    try:
-        return jsonify({"success": True, "repository": repo, "pulls": gh.get_pulls(repo)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/trending", methods=["GET"])
-def trending():
-    import github_client as gh
-    language = request.args.get("language", "")
-    since    = request.args.get("since", "daily")
-    if since not in ("daily", "weekly", "monthly"):
-        since = "daily"
-    try:
-        return jsonify({"success": True, "results": gh.get_trending(language, since)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/clear", methods=["POST"])
-def clear():
-    return jsonify({"success": True, "message": "Session cleared."})
-
-
-# ── Screenshot route ─────────────────────────────────────────
-@app.route("/screenshot", methods=["POST"])
-def screenshot():
-    """
-    POST /screenshot
-    Body (JSON):
-      - target  : "repo" | "user"          (required)
-      - name    : "owner/repo" or "username" (required)
-      - width   : viewport width in px      (optional, default 1280)
-      - height  : viewport height in px     (optional, default 900)
-
-    Returns: PNG image file
-    """
-    data   = request.get_json(silent=True) or {}
-    target = (data.get("target") or "").strip().lower()   # "repo" or "user"
-    name   = (data.get("name")   or "").strip()
-    width  = int(data.get("width",  1280))
-    height = int(data.get("height", 900))
-
-    # ── Validate inputs ──────────────────────────────────────
-    if target not in ("repo", "user"):
-        return jsonify({"error": "'target' must be 'repo' or 'user'"}), 400
-    if not name:
-        return jsonify({"error": "'name' is required (e.g. 'torvalds/linux' or 'torvalds')"}), 400
-    if target == "repo" and "/" not in name:
-        return jsonify({"error": "For target='repo' use owner/repo format"}), 400
-
-    # ── Build GitHub URL ─────────────────────────────────────
-    url = f"https://github.com/{name}"
-
-    # ── Temp file for screenshot ─────────────────────────────
-    import tempfile
-    tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-    tmp.close()
-
-    try:
-        run_async(_take_screenshot(url, tmp.name, width=width, height=height), timeout=45)
-    except TimeoutError:
-        os.unlink(tmp.name)
-        return jsonify({"error": "Screenshot timed out (45s)"}), 504
-    except Exception as e:
-        os.unlink(tmp.name)
-        return jsonify({"error": f"Screenshot failed: {e}"}), 500
-
-    # ── Stream PNG back to caller ────────────────────────────
-    slug = name.replace("/", "_")
-    return send_file(
-        tmp.name,
-        mimetype="image/png",
-        as_attachment=True,
-        download_name=f"github_{slug}.png",
+    github_token = st.text_input(
+        "GitHub Token",
+        value=os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN", ""),
+        type="password"
+    )
+    scrapegraph_key = st.text_input(
+        "ScrapeGraph API Key",
+        value=os.getenv("SCRAPEGRAPH_API_KEY", ""),
+        type="password"
     )
 
+    if st.button("💾 Save Keys", use_container_width=True):
+        st.session_state["GROQ_API_KEY"] = groq_key
+        st.session_state["GITHUB_PERSONAL_ACCESS_TOKEN"] = github_token
+        st.session_state["SCRAPEGRAPH_API_KEY"] = scrapegraph_key
 
-# ── User profile formatter ───────────────────────────────────
-def format_user_profile(user: dict, repos: list) -> str:
-    lines = []
+        os.environ["GROQ_API_KEY"] = groq_key
+        os.environ["GITHUB_PERSONAL_ACCESS_TOKEN"] = github_token
+        os.environ["SCRAPEGRAPH_API_KEY"] = scrapegraph_key
 
-    # Header
-    lines.append(f"👤 {user.get('name') or user['username']}")
-    
-    if user.get("bio"):
-        lines.append(f"📝 {user['bio']}")
+        st.success("Credentials updated!")
+        time.sleep(1)
+        st.rerun()
 
-    if user.get("location"):
-        lines.append(f"📍 {user['location']}")
+    if groq_key or github_token or scrapegraph_key:
+        st.markdown("""
+        <div class="status-pill status-connected" style="margin-top: 8px;">
+            <div class="status-dot"></div>
+            Credentials active
+        </div>
+        """, unsafe_allow_html=True)
 
-    lines.append("")
+    st.markdown("---")
 
-    # Stats
-    lines.append(
-        f"⭐ Followers: {user['followers']}  "
-        f"·  Following: {user['following']}  "
-        f"·  Repos: {user['public_repos']}"
-    )
+    # Sidebar footer
+    st.markdown("""
+    <div style="color: #3d4450; font-size: 0.72rem; text-align: center; padding-top: 12px;">
+        Powered by GitHub MCP · Groq · ScrapeGraphAI
+    </div>
+    """, unsafe_allow_html=True)
 
-    lines.append(f"🔗 {user['url']}")
-    lines.append("")
 
-    # Top repos
-    lines.append("🚀 Top Repositories:\n")
+# ── Hero Header ──────────────────────────────────────────────────────
+logo_img = f'<img src="{logo_src}" alt="Logo" class="hero-logo"/>' if logo_src else ''
 
-    if not repos:
-        lines.append("No repositories found.")
-        return "\n".join(lines)
+st.markdown(
+    f"""
+    <div class="hero-container">
+        <div class="hero-title-row">
+            {logo_img}
+            <div>
+                <div class="hero-title">GitHub Intelligence</div>
+            </div>
+        </div>
+        <div class="hero-subtitle">
+            Autonomous AI-powered GitHub management — create repos, branches, issues & PRs with natural language.
+        </div>
+        <div class="hero-badges">
+            <div class="hero-badge">
+                <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" style="filter: invert(1);"/>
+                GitHub MCP
+            </div>
+            <div class="hero-badge">⚡ Groq LLM</div>
+            <div class="hero-badge">🌐 ScrapeGraphAI</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    for repo in repos[:6]:
-        stars = repo.get("stars", 0)
-        lang = repo.get("language") or "Unknown"
-        desc = repo.get("description") or "No description"
 
-        lines.append(
-            f"⭐ {stars:<3}  {repo['name']}  [{lang}]"
+# ── Tabs ─────────────────────────────────────────────────────────────
+tab1, tab2, tab3 = st.tabs([
+    "🤖 AI Agent",
+    "GitHub Automation",
+    "MCP Tools Explorer",
+])
+
+
+# ══════════════════════════════════════════════════════════════════════
+# TAB 1 — AI Agent (Chat)
+# ══════════════════════════════════════════════════════════════════════
+with tab1:
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    # Display history
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"], avatar="🧑‍💻" if msg["role"] == "user" else "🤖"):
+            st.markdown(msg["content"])
+
+    # Input
+    user_input = st.chat_input("Ask the agent anything... (e.g., 'analyze HarshS99/Github_Intelligence')")
+
+    if user_input:
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+
+        # Command executed indicator
+        st.markdown(
+            f"""
+            <div class="command-box">
+                <div class="command-label">Command Executed</div>
+                <div class="command-text">{user_input}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
-        lines.append(f"   {desc}")
-        lines.append("")
 
-    return "\n".join(lines)
+        with st.chat_message("assistant", avatar="🤖"):
+            with st.spinner("🧠 Agent is thinking..."):
+                try:
+                    response = run_action(user_input)
+                except Exception as e:
+                    response = f"❌ Error: {str(e)}"
+
+            st.markdown(response)
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
 
 
-# ── Entry point ──────────────────────────────────────────────
-if __name__ == "__main__":
-    print("=" * 52)
-    print("  🐙 GitHub Intelligence — http://localhost:8000")
-    print("=" * 52)
-    print(f"  GROQ_API_KEY  : {'✅ set' if GROQ_API_KEY else '❌ MISSING — add to .env'}")
-    print(f"  GITHUB_TOKEN  : {'✅ set' if GITHUB_TOKEN else '⚠️  not set (60 req/hr)'}")
-    print(f"  config.json   : {'✅ loaded' if _CONFIG_OK else '❌ MISSING'}")
-    print("=" * 52)
-    app.run(host="0.0.0.0", port=8000, debug=False, threaded=True)
+# ══════════════════════════════════════════════════════════════════════
+# TAB 2 — GitHub Automation Studio
+# ══════════════════════════════════════════════════════════════════════
+with tab2:
+    st.markdown("""
+    <div class="section-header">
+        <div class="accent"></div>
+        Quick Actions
+    </div>
+    """, unsafe_allow_html=True)
+
+    qcols = st.columns(4)
+    quick_actions = [
+        ("📦 Create Repo", "Create a new public repository called 'my-new-project' with a README"),
+        ("🌿 Create Branch", "Create a branch called 'feature/new-feature' in HarshS99/Github_Intelligence"),
+        ("🐛 Create Issue", "Create an issue titled 'Bug: Fix login flow' in HarshS99/Github_Intelligence"),
+        ("🔀 List PRs", "List all open pull requests in HarshS99/Github_Intelligence"),
+    ]
+
+    if "selected_action" not in st.session_state:
+        st.session_state.selected_action = ""
+    for col, (label, cmd) in zip(qcols, quick_actions):
+        with col:
+            if st.button(label, use_container_width=True):
+                st.session_state.selected_action = cmd
+
+    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+
+    # Custom command
+    action_input = st.text_area(
+        "Command",
+        value=st.session_state.selected_action,
+        placeholder="Type any GitHub command in natural language...\ne.g., 'Create a repo called ai-platform with description AI tools'",
+        height=100,
+        label_visibility="collapsed",
+    )
+
+    if st.button("Execute via MCP", use_container_width=True, key="exec_mcp"):
+        if action_input:
+            with st.spinner("⚡ Executing via GitHub MCP Server..."):
+                try:
+                    result = run_action(action_input)
+                    st.success("✅ Action executed!")
+                    st.markdown(result)
+                except Exception as e:
+                    st.error(f"❌ Error: {e}")
+        else:
+            st.warning("Enter a command first.")
+
+
+# ══════════════════════════════════════════════════════════════════════
+# TAB 3 — MCP Tools Explorer
+# ══════════════════════════════════════════════════════════════════════
+with tab3:
+    if st.button("🔄 Discover MCP Tools", use_container_width=True, key="load_tools"):
+        with st.spinner("Connecting to GitHub MCP Server..."):
+            try:
+                tools = list_mcp_tools()
+                if tools and tools[0].get("name") != "error":
+                    st.success(f"✅ Loaded **{len(tools)}** tools from GitHub MCP Server!")
+                    for tool in tools:
+                        with st.expander(f"🔹 `{tool['name']}`"):
+                            st.markdown(f"_{tool['description']}_")
+                else:
+                    err_msg = tools[0].get('description', 'Unknown error') if tools else 'No tools returned by MCP server'
+                    st.error(f"Failed to load tools: {err_msg}")
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+
+    st.markdown("""
+    <div class="section-header" style="margin-top: 20px;">
+        <div class="accent"></div>
+        Available Toolsets
+    </div>
+    """, unsafe_allow_html=True)
+
+    toolset_data = [
+        ("🗂️", "Repos", "Create, delete, list, search, fork repositories. Read files, manage settings."),
+        ("🐛", "Issues", "Create, update, close, assign, label issues. Read comments, sub-issues."),
+        ("🔀", "Pull Requests", "Open, review, merge, comment on PRs. Get diffs, reviews, files changed."),
+        ("⚡", "Actions", "Monitor workflows, check runs, view logs, manage CI/CD pipelines."),
+        ("🔒", "Code Security", "Code scanning alerts, Dependabot alerts, secret scanning."),
+        ("🌿", "Git", "Create branches, tags, refs. Low-level Git operations."),
+        ("👤", "Users", "Get user profiles, search users, check permissions."),
+        ("💬", "Discussions", "Read and manage GitHub Discussions."),
+        ("📝", "Gists", "Create, read, update gists."),
+        ("🔔", "Notifications", "Read and manage GitHub notifications."),
+        ("📊", "Projects", "Manage GitHub Projects (v2)."),
+        ("🏷️", "Labels", "Create and manage labels."),
+        ("⭐", "Stargazers", "List stargazers, check if starred."),
+    ]
+    for icon, name, desc in toolset_data:
+        st.markdown(f"""
+        <div class="toolset-card">
+            <div class="toolset-icon">{icon}</div>
+            <div class="toolset-info">
+                <div class="toolset-name">{name}</div>
+                <div class="toolset-desc">{desc}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)

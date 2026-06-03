@@ -1,8 +1,27 @@
-.env
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+dist/
+build/
 venv/
-env/
+.venv/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
 .DS_Store
-*.log
-*.pkl
+Thumbs.db
+
+# Binary
+github-mcp-server
+*.tar.gz
+
+# UV
+.python-version
